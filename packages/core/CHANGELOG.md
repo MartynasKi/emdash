@@ -1,5 +1,36 @@
 # emdash
 
+## 1.6.0
+
+### Minor Changes
+
+- [#4787](https://github.com/emdash-cms/emdash/pull/4787) [`acb8a0f`](https://github.com/emdash-cms/emdash/commit/acb8a0fa5ec94648dfb0c447819a4d4bc70970fe) Thanks [@khoinguyenpham04](https://github.com/khoinguyenpham04)! - Fixes scheduled entries going live up to a minute after their scheduled time.
+  
+  On Cloudflare, each Cron Trigger run waits up to 70 seconds for upcoming entries and publishes each one at its scheduled time, so an entry scheduled about a minute or more ahead no longer depends on when the next trigger starts. Waiting uses no CPU time, but while entries are scheduled within that window a scheduled invocation stays open for up to about a minute, so consecutive invocations can overlap in Workers logs and metrics. Sites that use `createScheduledHandler()` from `@emdash-cms/cloudflare/worker` get this automatically.
+  
+  On Node.js, the scheduler runs the publishing sweep at the start of every minute, so an entry scheduled for a whole minute, as the admin sets it, goes live at that minute. A schedule with seconds, which only the API and MCP can set, can still go live up to a minute late.
+  
+  A scheduled publish that another scheduler run or an editor has already completed no longer runs `content:beforePublish` hooks, so a hook cannot record a rejection for an entry that is already live.
+  
+  A custom Worker entry point that calls `runScheduledTasks()` from `emdash/middleware` publishes only entries that are already due. To wait for upcoming entries, pass the new `publishUpcomingWithinMs` option:
+  
+  ```ts title="src/worker.ts"
+  await runScheduledTasks({ publishUpcomingWithinMs: 70 * 1000 });
+  ```
+
+### Patch Changes
+
+- [#4857](https://github.com/emdash-cms/emdash/pull/4857) [`1b430ea`](https://github.com/emdash-cms/emdash/commit/1b430eac1356885decbb32627369f52644868f34) Thanks [@emdash-autofix](https://github.com/apps/emdash-autofix)! - Fixes layout prefetching on anonymous multilingual Astro pages to load menus and taxonomy terms in the page's locale, avoiding duplicate reads when layouts request that locale explicitly. Sites with a single configured locale, or no i18n configuration, keep their existing prefetch behavior.
+  
+  On non-default-locale pages, implicit `getMenu()` and `getTaxonomyTerms()` calls still return default-locale data, but now load it separately from the page-locale prefetch. This increases reads for implicit-locale layouts and EmDash's built-in menu widgets on translated pages, including pages whose other navigation already passes an explicit locale. Menu widgets retain their default-locale output; this patch does not change which content they render. Layouts intended to render translated navigation should pass `{ locale: Astro.currentLocale }` to these helpers to reuse the prefetched data.
+
+- [#4837](https://github.com/emdash-cms/emdash/pull/4837) [`9f79ba3`](https://github.com/emdash-cms/emdash/commit/9f79ba33ff1687c135f66ed91b5546fa28321068) Thanks [@emdash-autofix](https://github.com/apps/emdash-autofix)! - Fixes two Astro warnings on static sites: the `Astro.request.headers` warning on prerendered pages and the `cache.set()` warning on 404s when no route cache provider is configured.
+- Updated dependencies [[`8c2ec3f`](https://github.com/emdash-cms/emdash/commit/8c2ec3f80405ce7dee7de6f0c8b9f8595d35826c), [`8a44cde`](https://github.com/emdash-cms/emdash/commit/8a44cded4aff08f1fe135f6bfdd713b1a09d7ad1), [`8a44cde`](https://github.com/emdash-cms/emdash/commit/8a44cded4aff08f1fe135f6bfdd713b1a09d7ad1), [`b58be50`](https://github.com/emdash-cms/emdash/commit/b58be5079daf5dc5320064abd1f676aed25869e6), [`d3c66d2`](https://github.com/emdash-cms/emdash/commit/d3c66d28fb65e308b1f7a655dd04e59cbe859fe6), [`7ce0d77`](https://github.com/emdash-cms/emdash/commit/7ce0d770c0ace5cfb245a75361848050e4978e55), [`9b131c3`](https://github.com/emdash-cms/emdash/commit/9b131c37d49e97894937f471b5c8b2ea403576ae), [`64b3288`](https://github.com/emdash-cms/emdash/commit/64b32880af1c0ea8d3554b06eca69420a8c56a82), [`8a44cde`](https://github.com/emdash-cms/emdash/commit/8a44cded4aff08f1fe135f6bfdd713b1a09d7ad1), [`c55e559`](https://github.com/emdash-cms/emdash/commit/c55e5595dc15f677ffa1d37620dc33092646aa02), [`41149d9`](https://github.com/emdash-cms/emdash/commit/41149d97e5142176eff83bf9521e5f092a234924), [`4cf36d3`](https://github.com/emdash-cms/emdash/commit/4cf36d3d9673ad180f7b7eb5f8908a65b62630c7), [`7218164`](https://github.com/emdash-cms/emdash/commit/72181643a1e16dbf6e0af293d869bc8bd7fbac9c), [`c73c600`](https://github.com/emdash-cms/emdash/commit/c73c6008f49c66d4f6629bf7436c883877e21344)]:
+  - @emdash-cms/admin@1.6.0
+  - @emdash-cms/blocks@1.6.0
+  - @emdash-cms/auth@1.6.0
+  - @emdash-cms/gutenberg-to-portable-text@1.6.0
+
 <!-- emdash-changelog-archive: ./changelog/1.2.0-to-1.3.1.md -->
 
 ## 1.5.0
